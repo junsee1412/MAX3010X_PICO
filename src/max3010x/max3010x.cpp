@@ -637,13 +637,21 @@ uint16_t MAX3010X::check(void) {
 		// For this example we are just doing Red and IR (3 bytes each)
 		int bytesLeftToRead = numberOfSamples * activeLEDs * 3;
 
+		// //Get ready to read a burst of data from the FIFO register
+		i2c_write_blocking(_i2c, _i2caddr, &REG_FIFODATA, 1, true);
+		// _i2cPort->beginTransmission(MAX30105_ADDRESS);
+		// _i2cPort->write(MAX30105_FIFODATA);
+		// _i2cPort->endTransmission();
+
 		// We may need to read as many as 288 bytes so we read in blocks no larger than I2C_BUFFER_LENGTH
+		//I2C_BUFFER_LENGTH changes based on the platform. 64 bytes for SAMD21, 32 bytes for Uno.
+		//Wire.requestFrom() is limited to BUFFER_LENGTH which is 32 on the Uno
 		while (bytesLeftToRead > 0) {
 			int toGet = bytesLeftToRead;
 			if (toGet > I2C_BUFFER_LENGTH) {
-				// If toGet is 32, this is bad because we read 6 bytes (RED+IR * 3 = 6) at a time.
-				// 32 % 6 = 2 left over. We don't want to request 32 bytes, we want to request 30.
-				// 32 % 9 (Red+IR+GREEN) = 5 left over. We want to request 27.
+				//If toGet is 32 this is bad because we read 6 bytes (Red+IR * 3 = 6) at a time
+				//32 % 6 = 2 left over. We don't want to request 32 bytes, we want to request 30.
+				//32 % 9 (Red+IR+GREEN) = 5 left over. We want to request 27.
 
 				// Trim toGet to be a multiple of the samples we need to read.
 				toGet = I2C_BUFFER_LENGTH - (I2C_BUFFER_LENGTH % (activeLEDs * 3));
@@ -652,8 +660,9 @@ uint16_t MAX3010X::check(void) {
 			bytesLeftToRead -= toGet;
 
 			// Request toGet number of bytes from sensor
-			std::vector<uint8_t> dataReceived = readMany(REG_FIFODATA, toGet);
 			int index = 0;
+			// i2c_write_blocking(_i2c, _i2caddr, &REG_FIFODATA, 1, true);
+			i2c_read_blocking(_i2c, _i2caddr, readMany, toGet, false);
 
 			while (toGet > 0) {
 				sense.head++; // Advance the head of the storage struct
@@ -664,9 +673,9 @@ uint16_t MAX3010X::check(void) {
 
 				// Burst read three bytes - RED
 				temp[3] = 0;
-				temp[2] = dataReceived[index++];
-				temp[1] = dataReceived[index++];
-				temp[0] = dataReceived[index++];
+				temp[2] = readMany[index++];
+				temp[1] = readMany[index++];
+				temp[0] = readMany[index++];
 
 				// Convert array to long
 				std::memcpy(&tempLong, temp, sizeof(tempLong));
@@ -681,9 +690,9 @@ uint16_t MAX3010X::check(void) {
 				{
 					// Burst read three more bytes - IR
 					temp[3] = 0;
-					temp[2] = dataReceived[index++];
-					temp[1] = dataReceived[index++];
-					temp[0] = dataReceived[index++];
+					temp[2] = readMany[index++];
+					temp[1] = readMany[index++];
+					temp[0] = readMany[index++];
 
 					// Convert array to long
 					std::memcpy(&tempLong, temp, sizeof(tempLong));
@@ -698,9 +707,9 @@ uint16_t MAX3010X::check(void) {
 				{
 					// Burst read three more bytes - IR
 					temp[3] = 0;
-					temp[2] = dataReceived[index++];
-					temp[1] = dataReceived[index++];
-					temp[0] = dataReceived[index++];
+					temp[2] = readMany[index++];
+					temp[1] = readMany[index++];
+					temp[0] = readMany[index++];
 
 					// Convert array to long
 					std::memcpy(&tempLong, temp, sizeof(tempLong));
@@ -756,22 +765,6 @@ void MAX3010X::bitMask(uint8_t reg, uint8_t mask, uint8_t thing) {
 	// Change contents of register
 	writeRegister(_i2caddr, reg, originalContents | thing);
 	// i2c_smbus_write_byte_data(_i2c, reg, originalContents | thing);
-}
-
-/**
- * Read multiple bytes from register.
- */
-std::vector<uint8_t> MAX3010X::readMany(uint8_t address, uint8_t length) {
-	// ioctl(_i2c, I2C_SLAVE, _i2caddr);
-	uint8_t* rawRead = new uint8_t[length];
-	i2c_write_blocking(_i2c, _i2caddr, &address, 1, true);
-	i2c_read_blocking(_i2c, _i2caddr, rawRead, length, false);
-	// i2c_smbus_read_i2c_block_data(_i2c, address, length, rawRead);
-	std::vector<uint8_t> result;
-	for (uint8_t i = 0; i < length; i++) {
-		result.push_back(rawRead[i]);
-	}
-	return result;
 }
 
 uint8_t MAX3010X::readRegister(uint8_t address, uint8_t reg) {

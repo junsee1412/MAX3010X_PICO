@@ -1,4 +1,3 @@
-#include <vector>
 #include <cstring>
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
@@ -112,7 +111,7 @@ class MAX3010X {
 
 		void bitMask(uint8_t reg, uint8_t mask, uint8_t thing);
 
-		std::vector<uint8_t> readMany(uint8_t address, uint8_t length);
+		uint8_t readMany[16];
 
 		#define STORAGE_SIZE 4
 		typedef struct Record 
