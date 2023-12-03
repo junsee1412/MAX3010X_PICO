@@ -20,14 +20,7 @@ add_executable(${PROJECT_NAME}
 # Create map/bin/hex/uf2 files
 pico_add_extra_outputs(${PROJECT_NAME})
 
-add_library(pico_max3010x INTERFACE)
-
-target_sources(pico_max3010x INTERFACE
-  # INTERFACE
-  ${CMAKE_CURRENT_LIST_DIR}/src/max3010x/max3010x.cpp
-)
-
-target_include_directories(pico_max3010x INTERFACE ${CMAKE_CURRENT_LIST_DIR}/include)
+add_subdirectory(pico_max3010x)
 
 # Pull in pico libraries that we need
 target_link_libraries(${PROJECT_NAME} pico_stdlib hardware_i2c pico_max3010x )
